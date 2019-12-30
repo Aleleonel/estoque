@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.urls import reverse_lazy
 from projeto.core.models import TimeStampedModel
 from projeto.produto.models import Produto
 #from .managers import EstoqueEntradaManager, EstoqueSaidaManager
@@ -14,7 +15,7 @@ MOVIMENTO = (
 class Estoque(TimeStampedModel):
     funcionario = models.ForeignKey(User, on_delete=models.CASCADE, blank=True)
     nf = models.PositiveIntegerField('nota fiscal', null=True, blank=True)
-    movimento = models.CharField(max_length=1, choices=MOVIMENTO, blank=True)
+    movimento = models.CharField(max_length=1, choices=MOVIMENTO)
 
     class Meta:
         ordering = ('-created',)
@@ -24,9 +25,12 @@ class Estoque(TimeStampedModel):
             return '{} - {} - {}'.format(self.pk, self.nf, self.created.strftime('%d-%m-%Y'))
         return '{} --- {}'.format(self.pk, self.created.strftime('%d-%m-%Y'))
 
+    def get_absolute_url(self):
+        return reverse_lazy('estoque:estoque_entrada_detail', kwargs={'pk': self.pk})
+
     def nf_formated(self):
         if self.nf:
-            return str(self.nf).zfill(3)
+            return str(self.nf).zfill(3) #zfill coloca zeros a esqueda de uma estring
         return '---'
 
 
@@ -40,14 +44,14 @@ class EstoqueEntrada(Estoque):
         verbose_name_plural = 'estoque entrada'
 
 
-class EstoqueSaida(Estoque):
-
-    #objects = EstoqueSaidaManager()
-
-    class Meta:
-        proxy = True
-        verbose_name = 'estoque saída'
-        verbose_name_plural = 'estoque saída'
+# class EstoqueSaida(Estoque):
+#
+#     #objects = EstoqueSaidaManager()
+#
+#     class Meta:
+#         proxy = True
+#         verbose_name = 'estoque saída'
+#         verbose_name_plural = 'estoque saída'
 
 
 class EstoqueItens(models.Model):
