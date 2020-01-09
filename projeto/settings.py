@@ -39,10 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Apps de terceiros
     'widget_tweaks',
+    'bootstrapform',
     # Meus apps
     'projeto.core',
     'projeto.produto',
     'projeto.estoque',
+
 ]
 
 MIDDLEWARE = [
