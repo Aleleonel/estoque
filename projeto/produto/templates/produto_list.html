@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 
-
-
 {% block content %}
+
+    <div class="row">
+        <div class="col-sm-6">
+        <form action="." method="GET" class="form-inline">
+            <input type="text" id="search" name="search" class="form-control"  placeholder="busca">
+            <input type="submit" class="btn btn-primary" style="margin-left: 10px;" value="Localizar">
+        </form>
+    </div>
+    </div>
 
     <div class="page-header">
         <h2>Lista de Produtos
