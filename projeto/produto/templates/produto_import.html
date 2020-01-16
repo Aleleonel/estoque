@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input name="myfile" type="file">
+    <button type="submit" class="btn btn-success">Uploadr</button>
+</form>
+
+{% endblock content %}
