@@ -1,16 +1,17 @@
 import csv
 import io
-from email import header
-
+import pandas as pd
+from datetime import datetime
 from django.contrib import messages
+from django.db.models import Q
 from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.generic import CreateView, UpdateView, ListView
+
+from .actions.export_xls import export_xlsx
 from .models import Produto
 from .forms import ProdutoForm
-
-from .models import Produto
 
 
 def produto_list(request):
@@ -28,6 +29,16 @@ class ProdutoList(ListView):
     template_name = 'produto_list.html'
     paginate_by = 10
 
+    def get_queryset(self):
+        queryset = super(ProdutoList, self).get_queryset()
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(produto__icontains=search) |
+                Q(ncm__icontains=search)
+            )
+        return queryset
+
 
 def produto_detail(request, pk):
     template_name = 'produto_detail.html'
@@ -36,15 +47,17 @@ def produto_detail(request, pk):
     return render(request, template_name, context)
 
 
-class ProdutoDetail(ListView):
-    model = Produto
-    template_name = 'produto_detail.html'
-    paginate_by = 10
-
-
 def produto_add(request):
-    template_name = 'produto_form.html'
-    return render(request, template_name)
+    form = ProdutoForm(request.POST or None)
+    template_name = 'produto_form2.html'
+
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+            return HttpResponseRedirect(reverse('produto:produto_list'))
+
+    context = {'form': form}
+    return render(request, template_name, context)
 
 
 class ProdutoCreate(CreateView):
@@ -60,7 +73,7 @@ class ProdutoUpdate(UpdateView):
 
 
 def produto_json(request, pk):
-    ''' Retorna o produto id e estoque '''
+    ''' Retorna o produto, id e estoque. '''
     produto = Produto.objects.filter(pk=pk)
     data = [item.to_dict_json() for item in produto]
     return JsonResponse({'data': data})
@@ -93,13 +106,14 @@ def save_data(data):
 def import_csv(request):
     if request.method == 'POST' and request.FILES['myfile']:
         myfile = request.FILES['myfile']
-        # Lendo arquivo InMemoryUploadFile
+        # Lendo arquivo InMemoryUploadedFile
         file = myfile.read().decode('utf-8')
         reader = csv.DictReader(io.StringIO(file))
         # Gerando uma list comprehension
-        data =[line for line in reader]
+        data = [line for line in reader]
         save_data(data)
         return HttpResponseRedirect(reverse('produto:produto_list'))
+
     template_name = 'produto_import.html'
     return render(request, template_name)
 
@@ -115,4 +129,51 @@ def export_csv(request):
         for produto in produtos:
             produto_writer.writerow(produto)
     messages.success(request, 'Produtos exportados com sucesso.')
+    return HttpResponseRedirect(reverse('produto:produto_list'))
+
+
+def import_xlsx(request):
+    filename = 'fix/produtos.xlsx'
+    action_import_xlsx(filename)
+    messages.success(request, 'Produtos importados com sucesso.')
+    return HttpResponseRedirect(reverse('produto:produto_list'))
+
+
+def exportar_produtos_xlsx(request):
+    MDATA = datetime.now().strftime('%Y-%m-%d')
+    model = 'Produto'
+    filename = 'produtos_exportados.xlsx'
+    _filename = filename.split('.')
+    filename_final = f'{_filename[0]}_{MDATA}.{_filename[1]}'
+    queryset = Produto.objects.all().values_list(
+        'importado',
+        'ncm',
+        'produto',
+        'preco',
+        'estoque',
+        'estoque_minimo',
+        'categoria__categoria',
+    )
+    columns = ('Importado', 'NCM', 'Produto', 'Preço',
+               'Estoque', 'Estoque mínimo', 'Categoria')
+    response = export_xlsx(model, filename_final, queryset, columns)
+    return response
+
+
+def import_csv_with_pandas(request):
+    filename = 'fix/produtos.csv'
+    df = pd.read_csv(filename)
+    aux = []
+    for row in df.values:
+        obj = Produto(
+            produto=row[0],
+            ncm=row[1],
+            importado=row[2],
+            preco=row[3],
+            estoque=row[4],
+            estoque_minimo=row[5],
+        )
+        aux.append(obj)
+    Produto.objects.bulk_create(aux)
+    messages.success(request, 'Produtos importados com sucesso.')
     return HttpResponseRedirect(reverse('produto:produto_list'))

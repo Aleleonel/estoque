@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'projeto.core',
     'projeto.produto',
     'projeto.estoque',
+    'projeto.pedido',
 
 ]
 
